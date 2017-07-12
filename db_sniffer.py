@@ -27,6 +27,7 @@ class db_sniffer(object):
 
 		self.c.execute("CREATE TABLE 'sniffer' (ts integer, pts integer, pid integer, type integer, retry integer, hop_dest integer, hop_src integer, path_dest integer, path_src integer)")
 		self.c.execute("CREATE TABLE 'acks' (ts integer, pts integer, pid integer, hop_dest integer)")
+		self.c.execute("CREATE TABLE 'net' (ts, pid, type, path_dest, path_src, hop_dest, hop_src, rssi, retry)")
 		self.conn.commit()
 
 	def input_ack(self, network_data):
@@ -34,9 +35,13 @@ class db_sniffer(object):
 		self.c.execute(query)
 		self.conn.commit()
 
-
 	def input_tx(self, network_data):
 		query = "INSERT INTO sniffer (ts, pts, pid, type, hop_dest, hop_src, path_dest, path_src, retry) VALUES (" + str(network_data['timestamp']) + ", " + str(network_data['pts']) + ", " + str(network_data['pid']) + ", " + str(network_data['type']) + ", " + str(network_data['hop_dest']) + ", " + str(network_data['hop_src']) + ", " + str(network_data['path_dest']) + ", " + str(network_data['path_src'])+ ", " + str(network_data['retry'])+ ")"
+		self.c.execute(query)
+		self.conn.commit()
+
+	def net_data(self, net_data):
+		query = "INSERT INTO net (ts, pid, type, path_dest, path_src, hop_dest, hop_src, rssi, retry) VALUES(" + str(net_data["ts"]) + "," + str(net_data["pid"]) + "," + str(net_data["type"]) + "," +	str(net_data["path_dest"]) + "," + str(net_data["path_src"]) + "," + str(net_data["hop_dest"]) + "," + str(net_data["hop_src"]) + "," +	str(net_data["rssi"]) + "," + str(net_data["retry"]) + ")"
 		self.c.execute(query)
 		self.conn.commit()
 
