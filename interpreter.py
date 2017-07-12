@@ -276,7 +276,6 @@ class interpreter(object):
 			return
 		LWMESH = MAC[9:-2]
 		MDA, MSA = unpack('<HH', MAC[5:9])
-		self.db.save_raw(hexlify(LWMESH))
 		FC, SN, SA, DA, SDE = unpack('<BBHHB', LWMESH[0:7])
 		SE = SDE > 4
 		DE = SDE & 0xf
@@ -290,6 +289,10 @@ class interpreter(object):
 		}
 		# GDP log
 		gdp_log(net_data, self.suma);
+		# Text log
+		# self.db.save_raw(hexlify(LWMESH))
+		# Database
+		self.db.net_data(net_data)
 		# Multicast header adjustment
 		if FC&0x8:
 			multicast_h = unpack('<H', LWMESH[7:9])[0]
@@ -313,13 +316,16 @@ class interpreter(object):
 			src_addr, des_addr, mc = unpack('<HHB', payload[1:6])
 		elif (CID == 0x02) and (len(payload[1:])==6):
 			# Route request - looking for route
+			print "REQ", net_data["path_src"]
+			self.db.save_raw("REQ - " + str(net_data["ts"]) + " - " + str(net_data["path_src"]))
 			src_addr, des_addr, mc, lq = unpack('<HHBB', payload[1:7])
 		elif (CID == 0x03) and (len(payload[1:])==7):
 			# Route reply - routing data
+			print "RPL", net_data["path_dest"]
+			self.db.save_raw("RPL - " + str(net_data["ts"]) + " - " + str(net_data["path_dest"]))
 			src_addr, des_addr, mc, f_lq, r_lq = unpack('<HHBBB', payload[1:8])
 		else:
-			print("SN: %02x\tFC: %02x\tSA: %04x\tDA: %04x" %(SN, FC, SA, DA))
-			print("DATA: %s" %hexlify(payload))
+			return
 	
 	def _interpret_DigiMesh(self, V=''):
 		print hexlify(V)

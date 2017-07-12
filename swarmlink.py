@@ -15,4 +15,3 @@ def gdp_log(data, s):
   message = duata
   a = s.send(message)
   unpacked = unpack("!QBBBQQQQQ", duata)
-  print unpacked
