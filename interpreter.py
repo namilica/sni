@@ -45,7 +45,7 @@ from libmich.formats.IEEE802154 import TI_USB, TI_CC, IEEE802154
 from db_sniffer import *
 from net_sniffer import *
 from aes import AES
-from kokoman import gokaka
+from swarmlink import gdp_log
 
 # export filtering
 __all__ = ['interpreter']
@@ -266,14 +266,13 @@ class interpreter(object):
 		PHY = V
 		PHY_H = PHY[0:8]
 		MAC = PHY[8:]
-		MAC_H = unpack('<H', MAC[0:2])[0]
-		MAC_FCS = unpack('<H', MAC[-2:])[0]
-		print hexlify(MAC)
-		if (0x0002 == MAC_H):
-			#self.db.save_raw("HOP ACK?")
+		MAC_FC = unpack('<H', MAC[0:2])[0]
+		MAC_CRC = unpack('<H', MAC[-2:])[0]
+		if (0x0002 == MAC_FC):
+			# Hop acknowledgements - not necessarily from target network
 			return
-		if (0x8861 != MAC_H) and (0x8841 != MAC_H):
-			self.db.save_raw("not LW\t" + hexlify(V))
+		if (0x8861 != MAC_FC) and (0x8841 != MAC_FC):
+			# Received packet does not use lwmesh format
 			return
 		LWMESH = MAC[9:-2]
 		MDA, MSA = unpack('<HH', MAC[5:9])
@@ -281,54 +280,46 @@ class interpreter(object):
 		FC, SN, SA, DA, SDE = unpack('<BBHHB', LWMESH[0:7])
 		SE = SDE > 4
 		DE = SDE & 0xf
-####################	HOMIE packing
-		maman = {
-			"ts":	time(),
-			"pid":	SN,
-			"type":	FC,
-			"retry":	0,
-			"path_dest":	DA,
-			"path_src":	SA,
-			"hop_dest":	MDA,
-			"hop_src":	MSA,
-			"rssi":	12
+		# Network data
+		net_data = {
+			"ts": time(), "pid": SN, "type": FC,
+			"path_dest": DA,	"path_src":	SA,
+			"hop_dest": MDA,	"hop_src": MSA,
+			"rssi":	12,
+			"retry": 0
 		}
-		#print "SA:", SA
-		#print "DA:", DA
-		gokaka(maman, self.suma);
-####################
-		if FC&0x8:#multicast header
+		# GDP log
+		gdp_log(net_data, self.suma);
+		# Multicast header adjustment
+		if FC&0x8:
 			multicast_h = unpack('<H', LWMESH[7:9])[0]
 			payload = LWMESH[9:]
 		else:
 			payload = LWMESH[7:]
-		if FC&0x2:#security
+		# Security - not able to decrypt secure packets yet
+		if FC&0x2:
 			payload = unencrypt(payload[:-4], key)
+		# Payload data gathering
 		if len(payload)<1:
-			print "mamaaa"
+			# Erroneous packet
+			self.db.save_raw("EMPTY lwmesh packet")
 			return;
 		CID = unpack('<B', payload[0:1])[0]
 		if (CID == 0x00) and (len(payload[1:])==2):
-			print "ACK✪✪✪✪✪✪✪✪✪✪✪✪✪✪✪✪✪"
-#			print("DATA: %s" %hexlify(payload))
-			self.db.save_raw("LW ACK")
+			# End to end acknowledgements
 			ack_sn, ctrl_m = unpack('<BB', payload[1:3])
-	#	elif (CID == 0x01) and (len(payload[1:])==5):
-	#		print "Route ERR"
-	#		self.db.save_raw("LW ROUTE ERR")
-	#		src_addr, des_addr, mc = unpack('<HHB', payload[1:6])
+		elif (CID == 0x01) and (len(payload[1:])==5):
+			# Routing error - no route found
+			src_addr, des_addr, mc = unpack('<HHB', payload[1:6])
 		elif (CID == 0x02) and (len(payload[1:])==6):
-			print "Route REQ"
-			self.db.save_raw("LW ROUTE REQ")
+			# Route request - looking for route
 			src_addr, des_addr, mc, lq = unpack('<HHBB', payload[1:7])
 		elif (CID == 0x03) and (len(payload[1:])==7):
-			print "Route RPL"
-			self.db.save_raw("LW ROUTE RPL")
+			# Route reply - routing data
 			src_addr, des_addr, mc, f_lq, r_lq = unpack('<HHBBB', payload[1:8])
 		else:
-			self.db.save_raw("LW DATA")
-#			print("SN: %02x\tFC: %02x\tSA: %04x\tDA: %04x" %(SN, FC, SA, DA))
-#			print("DATA: %s" %hexlify(payload))
+			print("SN: %02x\tFC: %02x\tSA: %04x\tDA: %04x" %(SN, FC, SA, DA))
+			print("DATA: %s" %hexlify(payload))
 	
 	def _interpret_DigiMesh(self, V=''):
 		print hexlify(V)

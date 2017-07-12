@@ -10,7 +10,7 @@ PORT = 5000
 BUFFER_SIZE = 1024
 GCL="test.ph.edu.upd.resense.node2"
 
-def gokaka(data, s):
+def gdp_log(data, s):
   duata = pack("!QBBBQQQQQ", data["ts"], data["pid"], data["type"], data["retry"], data["path_dest"], data["path_src"], data["hop_dest"], data["hop_src"], data["rssi"])
   message = duata
   a = s.send(message)
