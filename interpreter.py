@@ -266,6 +266,8 @@ class interpreter(object):
 		PHY = V
 		PHY_H = PHY[0:8]
 		MAC = PHY[8:]
+		if len(MAC) < 2:
+			return
 		MAC_FC = unpack('<H', MAC[0:2])[0]
 		MAC_CRC = unpack('<H', MAC[-2:])[0]
 		if (0x0002 == MAC_FC):
@@ -274,9 +276,12 @@ class interpreter(object):
 		if (0x8861 != MAC_FC) and (0x8841 != MAC_FC):
 			# Received packet does not use lwmesh format
 			return
-		LWMESH = MAC[9:-2]
 		MDA, MSA = unpack('<HH', MAC[5:9])
-		FC, SN, SA, DA, SDE = unpack('<BBHHB', LWMESH[0:7])
+		LWMESH = MAC[9:-2]
+		LWMESH_H = LWMESH[0:7]
+		if len(LWMESH_H) < 7:
+			return
+		FC, SN, SA, DA, SDE = unpack('<BBHHB', LWMESH_H)
 		SE = SDE > 4
 		DE = SDE & 0xf
 		# Network data
